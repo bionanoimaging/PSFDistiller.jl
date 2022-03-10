@@ -1,4 +1,4 @@
-module PSFDestiller
+module PSFDistiller
 
 using IndexFunArrays
 using Images # find_local_maxima
