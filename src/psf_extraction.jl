@@ -1,4 +1,4 @@
-export align_all, destille_PSF, nn_mutual, select_rois, clear_border, border_dist, remove_border
+export align_all, distille_PSF, nn_mutual, select_rois, clear_border, border_dist, remove_border
 
 """
     align_all(rois; shifts=nothing, optimizer=LBFGS(), iterations=500, verbose=false)
@@ -152,7 +152,7 @@ a tuple of  `(psf, shifted, shifts, cart_ids, selected)`
 + `selected`: a Float32 image with selection rings around each bead 
 + `params`: the result of the fit of the final PSF.
 """
-function destille_PSF(img, σ=1.3; positions=nothing, rel_thresh=0.1, min_dist=16.0, roi_size=(16,16), verbose=true, upper_thresh=nothing, pixelsize=1.0)
+function distille_PSF(img, σ=1.3; positions=nothing, rel_thresh=0.1, min_dist=16.0, roi_size=(16,16), verbose=true, upper_thresh=nothing, pixelsize=1.0)
     # may also upcast to Float32
     img, bg = remove_background(img) 
     if isnothing(positions)
