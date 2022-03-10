@@ -1,4 +1,4 @@
-export align_all, distille_PSF, nn_mutual, select_rois, clear_border, border_dist, remove_border
+export align_all, distille_PSF, nn_mutual, select_rois, clear_border, border_dist, remove_border, precise_extract
 
 """
     align_all(rois; shifts=nothing, optimizer=LBFGS(), iterations=500, verbose=false)
@@ -128,10 +128,28 @@ function remove_border(mat::Matrix, sz, roi_size; valid=nothing)
 end
 
 """
+    precise_extract(img, positions, roi_size)
+
+extracts a region of size `roi_size` from the ND-dataset `img` at each position centering each region precisely at the supixel cooredinates as specified by `positions`.
+
+#returns
+a tuple of `(extracted, cart_ids, mysum)` with `extracted` referring to the extracted and shifted regions and `mymean` being the average of all of these regions.
+`cart_ids` refers to cartesian indices of the nearest pixel positions.
+"""
+function precise_extract(img, positions, roi_size)
+    all_max_vec = [round.(Int, positions[n]) for n=1:length(positions)]
+    shifts = [positions[n].- all_max_vec[n] for n=1:length(positions)]
+    rois, cart_ids = select_rois(img, all_max_vec; roi_size=roi_size);
+    mymean, extracted, shifts = align_all(rois, shifts=shifts);
+    return extracted, cart_ids, mymean
+end
+
+"""
     destille_PSF(img, σ=1.3; positions=nothing, rel_thresh=0.1, min_dist=16.0, roi_size=(16,16), upper_thresh=nothing, pixelsize=1.0)
 
 automatically extracts multiple PSFs from one dataset, alignes and averages them. The input image `img` should contain a sparse set of PSF measurements
 obtained by imagin beads, QDots or NV centers.
+If you want to apply this to multicolor or multimode datasets, run it first on one channel and then again on the other channels using the `positions` argument.
 
 #arguments
 + `img`: ND-image to destill the PSF from
@@ -152,11 +170,18 @@ a tuple of  `(psf, shifted, shifts, cart_ids, selected)`
 + `selected`: a Float32 image with selection rings around each bead 
 + `params`: the result of the fit of the final PSF.
 """
-function distille_PSF(img, σ=1.3; positions=nothing, rel_thresh=0.1, min_dist=16.0, roi_size=(16,16), verbose=true, upper_thresh=nothing, pixelsize=1.0)
+function distille_PSF(img, σ=1.3; positions=nothing, rel_thresh=0.1, min_dist=16.0, roi_size=(16,16), verbose=true, upper_thresh=nothing, pixelsize=1.0, preferred_z=nothing)
     # may also upcast to Float32
     img, bg = remove_background(img) 
     if isnothing(positions)
-        gimg = gaussf(img, σ)
+        gimg, roisz = let
+            # decide whether to select only one slice for finding the beads
+            if isnothing(preferred_z)
+                gaussf(img, σ), roi_size
+            else
+                gaussf(img[:,:,preferred_z], σ), roi_size[1:2] #slice(img,3,preferred_z)
+            end
+        end
         gimg .*= (gimg .> maximum(gimg) .* rel_thresh)
         # gimg = clear_border(gimg, roi_size)
         all_max = findlocalmaxima(gimg)
@@ -170,15 +195,21 @@ function distille_PSF(img, σ=1.3; positions=nothing, rel_thresh=0.1, min_dist=1
         if !isnothing(upper_thresh)
             valid_nn .*= (all_val .< maximum(all_val) .* upper_thresh)
         end
-        all_max_vec = remove_border(all_max_vec, size(img), roi_size./2; valid=valid_nn)
+        all_max_vec = remove_border(all_max_vec, size(gimg), roisz./2; valid=valid_nn)
+
+        all_max_vec = let
+            # decide whether to select only one slice for finding the beads
+            if isnothing(preferred_z)
+                all_max_vec
+            else
+                [vcat(all_max_vec[n][1:2],preferred_z) for n=1:length(all_max_vec)]
+            end
+        end
 
         rois, cart_ids = select_rois(img, all_max_vec; roi_size=roi_size);
         psf, shifted, positions = align_all(rois, positions=all_max_vec, verbose=verbose);
     else
-        all_max_vec = [round.(Int, positions[n]) for n=1:length(positions)]
-        shifts = [positions[n].- all_max_vec[n] for n=1:length(positions)]
-        rois, cart_ids = select_rois(img, all_max_vec; roi_size=roi_size);
-        psf, shifted, shifts = align_all(rois, shifts=shifts, verbose=verbose);
+        shifted, cart_ids, psf = precise_extract(img, positions, roi_size)
     end
     selected = make_rings(size(img), cart_ids, expand_size(roi_size,size(img)))
 
