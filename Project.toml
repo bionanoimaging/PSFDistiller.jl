@@ -1,0 +1,4 @@
+name = "PSFDistiller"
+uuid = "04565bb4-ab3c-40ee-806f-74a8daaad57b"
+authors = ["RainerHeintzmann <heintzmann@gmail.com>"]
+version = "0.1.0"
