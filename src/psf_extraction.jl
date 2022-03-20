@@ -145,7 +145,7 @@ function precise_extract(img, positions, roi_size)
 end
 
 """
-    destille_PSF(img, σ=1.3; positions=nothing, rel_thresh=0.1, min_dist=16.0, roi_size=(16,16), upper_thresh=nothing, pixelsize=1.0)
+    destille_PSF(img, σ=1.3; positions=nothing, force_align=false, rel_thresh=0.1, min_dist=16.0, roi_size=(16,16), upper_thresh=nothing, pixelsize=1.0)
 
 automatically extracts multiple PSFs from one dataset, alignes and averages them. The input image `img` should contain a sparse set of PSF measurements
 obtained by imagin beads, QDots or NV centers.
@@ -155,6 +155,7 @@ If you want to apply this to multicolor or multimode datasets, run it first on o
 + `img`: ND-image to destill the PSF from
 + `σ`: the size of the filtering kernel usde in the preprocessing step before finding the local maxima. This may be noise-dependent.
 + `positions`: if a list of (sub-pixel precision) positions is provided, these will be used instead of aligning them. 
++ `force_align`: If true, the subpixel-alignment will be done, even though positions are given.
 + `rel_trhesh`: the threshold spedifying which local maxima are valid. This is a relative value compared to the maximum of the Gauss-filtered data.
 + `min_dist`: The minimum distance in pixels to the nearest other maximum.
 + `roi_size`: The size of the region of interest to extract. The default is 2D but this should also work for higher dimensions assuming the size of `img` for the other dimensions.
@@ -170,9 +171,14 @@ a tuple of  `(psf, shifted, shifts, cart_ids, selected)`
 + `selected`: a Float32 image with selection rings around each bead 
 + `params`: the result of the fit of the final PSF.
 """
-function distille_PSF(img, σ=1.3; positions=nothing, rel_thresh=0.1, min_dist=16.0, roi_size=(16,16), verbose=true, upper_thresh=nothing, pixelsize=1.0, preferred_z=nothing)
+function distille_PSF(img, σ=1.3; positions=nothing, force_align=false, rel_thresh=0.1, min_dist=nothing, roi_size=(16,16), verbose=true, upper_thresh=nothing, pixelsize=1.0, preferred_z=nothing)
     # may also upcast to Float32
-    img, bg = remove_background(img) 
+    img, bg = remove_background(img,2 .*σ) 
+    println("Subtracted a background of $(bg)")
+    if isnothing(min_dist)
+        min_dist = maximum(roi_size)
+    end
+    all_max_vec=[]
     if isnothing(positions)
         gimg, roisz = let
             # decide whether to select only one slice for finding the beads
@@ -187,15 +193,19 @@ function distille_PSF(img, σ=1.3; positions=nothing, rel_thresh=0.1, min_dist=1
         all_max = findlocalmaxima(gimg)
         all_val = gimg[all_max]
         all_max_vec = cart_to_mat(all_max)
+        println("Found $(length(all_max)) maxima to consider.")
 
         nndist, _ = nn_mutual(all_max_vec)
         valid_nn = nndist .> min_dist
 
-        println("Found $(sum(valid_nn)) beads to consider.")
+        println("Found $(sum(valid_nn)) beads to consider with sufficient distance min_dist=$(min_dist).")
+        max_b = maximum(all_val) .* upper_thresh
         if !isnothing(upper_thresh)
-            valid_nn .*= (all_val .< maximum(all_val) .* upper_thresh)
+            valid_nn .*= (all_val .< max_b)
         end
+        println("Found $(sum(valid_nn)) beads to consider with correct brightness $(max_b).")
         all_max_vec = remove_border(all_max_vec, size(gimg), roisz./2; valid=valid_nn)
+        println("Removed border. $(length(all_max_vec)) beads remaining.")
 
         all_max_vec = let
             # decide whether to select only one slice for finding the beads
@@ -205,20 +215,25 @@ function distille_PSF(img, σ=1.3; positions=nothing, rel_thresh=0.1, min_dist=1
                 [vcat(all_max_vec[n][1:2],preferred_z) for n=1:length(all_max_vec)]
             end
         end
-
         rois, cart_ids = select_rois(img, all_max_vec; roi_size=roi_size);
-        psf, shifted, positions = align_all(rois, positions=all_max_vec, verbose=verbose);
+        force_align=true
     else
-        shifted, cart_ids, psf = precise_extract(img, positions, roi_size)
+        rois, cart_ids, psf = precise_extract(img, positions, roi_size)
+        all_max_vec = positions
+    end
+    if force_align
+        println("Averaging $(length(rois)) regions of interest.")
+        psf, rois, positions = align_all(rois, positions=all_max_vec, verbose=verbose);
     end
     selected = make_rings(size(img), cart_ids, expand_size(roi_size,size(img)))
 
+    psf, _ = remove_background(psf,σ)
     if !isempty(psf)
         params, fwd, allp = gauss_fit(psf, verbose=verbose, pixelsize=pixelsize);
 
-        return (psf, shifted, positions, selected, params)
+        return (psf, rois, positions, selected, params, fwd)
     else
-        return [],[],[],positions,[]
+        return [],[],[],positions,[],[]
     end
 end
 
