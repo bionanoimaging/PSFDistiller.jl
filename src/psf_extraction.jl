@@ -199,11 +199,11 @@ function distille_PSF(img, σ=1.3; positions=nothing, force_align=false, rel_thr
         valid_nn = nndist .> min_dist
 
         println("Found $(sum(valid_nn)) beads to consider with sufficient distance min_dist=$(min_dist).")
-        max_b = maximum(all_val) .* upper_thresh
         if !isnothing(upper_thresh)
+            max_b = maximum(all_val) .* upper_thresh
             valid_nn .*= (all_val .< max_b)
+            println("Found $(sum(valid_nn)) beads to consider with correct brightness $(max_b).")
         end
-        println("Found $(sum(valid_nn)) beads to consider with correct brightness $(max_b).")
         all_max_vec = remove_border(all_max_vec, size(gimg), roisz./2; valid=valid_nn)
         println("Removed border. $(length(all_max_vec)) beads remaining.")
 
