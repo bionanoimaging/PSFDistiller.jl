@@ -156,20 +156,21 @@ If you want to apply this to multicolor or multimode datasets, run it first on o
 + `σ`: the size of the filtering kernel usde in the preprocessing step before finding the local maxima. This may be noise-dependent.
 + `positions`: if a list of (sub-pixel precision) positions is provided, these will be used instead of aligning them. 
 + `force_align`: If true, the subpixel-alignment will be done, even though positions are given.
-+ `rel_trhesh`: the threshold spedifying which local maxima are valid. This is a relative value compared to the maximum of the Gauss-filtered data.
++ `rel_trhesh`: the threshold specifying which local maxima are valid. This is a relative minimum brightness value compared to the maximum of the Gauss-filtered data.
 + `min_dist`: The minimum distance in pixels to the nearest other maximum.
 + `roi_size`: The size of the region of interest to extract. The default is 2D but this should also work for higher dimensions assuming the size of `img` for the other dimensions.
 + `upper_thresh`: if provided, also an upper relative threshold will be applied eliminating the very bright particles. If you have clusters, try `upper_thresh = 0.45`.
 + `pixelsize`: size of a pixel. Scales the FWHMs and σ in the result parameters.
 
 #returns
-a tuple of  `(psf, shifted, shifts, cart_ids, selected)`
-+ `psf`: the distilled PSF
-+ `shifted`: the individual aligned beads
-+ `shifts`: the subpixels shifts
-+ `cart_ids`: a vector of cartesian indices where the valid beads were selected
+a tuple of  `(apsf, rois, positions, selected, params, fwd)`
++ `apsf`: the distilled PSF
++ `rois`: the individual aligned beads as a vector of images
++ `positions`: the subpixels shifts as a vector of vectors
 + `selected`: a Float32 image with selection rings around each bead 
-+ `params`: the result of the fit of the final PSF.
++ `params`: the resulting fit parameters of the fit of the final PSF as a named tuple
++ `fwd`: the (forward projected) fit results in the selected ROIs 
+
 """
 function distille_PSF(img, σ=1.3; positions=nothing, force_align=false, rel_thresh=0.1, min_dist=nothing, roi_size=(16,16), verbose=true, upper_thresh=nothing, pixelsize=1.0, preferred_z=nothing)
     # may also upcast to Float32
@@ -206,6 +207,9 @@ function distille_PSF(img, σ=1.3; positions=nothing, force_align=false, rel_thr
         end
         all_max_vec = remove_border(all_max_vec, size(gimg), roisz./2; valid=valid_nn)
         println("Removed border. $(length(all_max_vec)) beads remaining.")
+        if length(all_max_vec) < 1
+            error("No beads were found which are valid.")
+        end
 
         all_max_vec = let
             # decide whether to select only one slice for finding the beads
