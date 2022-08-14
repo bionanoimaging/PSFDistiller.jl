@@ -2,5 +2,6 @@
 FourierTools = "b18b359b-aebc-45ac-a139-9c0ccbb2871e"
 InverseModeling = "ce844058-9528-415d-a63d-06f3dd08b29f"
 NDTools = "98581153-e998-4eef-8d0d-5ec2c052313d"
+Noise = "81d43f40-5267-43b7-ae1c-8b967f377efa"
 PSFDistiller = "04565bb4-ab3c-40ee-806f-74a8daaad57b"
 PointSpreadFunctions = "e8810a93-244e-46c5-8da3-35c5dd956001"
