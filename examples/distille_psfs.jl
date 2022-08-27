@@ -27,16 +27,16 @@ beads[rand(1:prod(sz),N)] .= 1.0
 perfect_img = conv_psf(beads, p_conf)
 n_img = poisson(perfect_img)
 
-apsf, rois, positions, selected, params, fwd = distille_PSF(perfect_img)
-params2, fwd2, allp2 = PSFDistiller.gauss_fit(apsf)
+mypsf, rois, positions, selected, params, fwd = distille_PSF(perfect_img)
+params2, fwd2, allp2 = PSFDistiller.gauss_fit(mypsf)
 
 @show sampling .* params[:FWHM]
 @show sampling .* params2[:FWHM]
 @show params2[:R2]
-# @vt fwd2 apsf (fwd2 .- apsf)
-@show mpsf = sum(apsf)/prod(size(apsf))
+# @vt fwd2 apsf (fwd2 .- mypsf)
+@show mpsf = sum(mypsf)/prod(size(mypsf))
 
-@show 1.0 - sum(abs2.(fwd2 .- apsf)) / sum(abs2.(apsf .- mpsf))
+@show 1.0 - sum(abs2.(fwd2 .- mypsf)) / sum(abs2.(mypsf .- mpsf))
 
 # visualize the result using View5D.jl
 # @ve n_img selected 

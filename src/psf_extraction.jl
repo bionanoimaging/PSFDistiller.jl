@@ -55,7 +55,7 @@ function nn_mutual(points)
 end
 
 """
-    select_rois(img::AbstractArray, roi_pos::Vector; valid=nothing, roi_size=(16,16))
+    select_rois(img::AbstractArray, roi_pos::Vector; valid=nothing, roi_size=Tuple(15 .* ones(Int, ndims(img))))
 
 extracts a series of ROIs based from the array `img` on the positions supplied in `Vector`.
 The latter can be a vector of Integer positions or a vector of `CartesionCoord` as optained by
@@ -70,7 +70,7 @@ Image.local.
 #returns
 a tuple of a vector of extracted regions of interest and a list of cartesian indices at which they were extracted.
 """
-function select_rois(img::AbstractArray, roi_pos::Vector; valid=nothing, roi_size=(16,16))
+function select_rois(img::AbstractArray, roi_pos::Vector; valid=nothing, roi_size=Tuple(15 .* ones(Int, ndims(img))))
     rois = []
     cart_list = Vector{CartesianIndex{ndims(img)}}([])
     for n in 1:length(roi_pos)
@@ -83,7 +83,7 @@ function select_rois(img::AbstractArray, roi_pos::Vector; valid=nothing, roi_siz
     return rois, cart_list
 end
 
-function select_rois(img::AbstractArray, roi_pos::Matrix; valid=nothing, roi_size=(16,16))
+function select_rois(img::AbstractArray, roi_pos::Matrix; valid=nothing, roi_size=Tuple(15 .* ones(Int, ndims(img))))
     select_rois(img, mat_to_vec(roi_pos); valid=valid, roi_size=roi_size)
 end
 
@@ -145,7 +145,7 @@ function precise_extract(img, positions, roi_size)
 end
 
 """
-    distille_PSF(img, σ=1.3; positions=nothing, force_align=false, rel_thresh=0.1, min_dist=16.0, roi_size=(16,16), upper_thresh=nothing, pixelsize=1.0)
+    distille_PSF(img, σ=1.3; positions=nothing, force_align=false, rel_thresh=0.1, min_dist=16.0, roi_size = Tuple(15 .* ones(Int, ndims(img))), upper_thresh=nothing, pixelsize=1.0)
 
 automatically extracts multiple PSFs from one dataset, alignes and averages them. The input image `img` should contain a sparse set of PSF measurements
 obtained by imagin beads, QDots or NV centers.
@@ -163,8 +163,8 @@ If you want to apply this to multicolor or multimode datasets, run it first on o
 + `pixelsize`: size of a pixel. Scales the FWHMs and σ in the result parameters.
 
 #returns
-a tuple of  `(apsf, rois, positions, selected, params, fwd)`
-+ `apsf`: the distilled PSF
+a tuple of  `(mypsf, rois, positions, selected, params, fwd)`
++ `mypsf`: the distilled PSF
 + `rois`: the individual aligned beads as a vector of images
 + `positions`: the subpixels shifts as a vector of vectors
 + `selected`: a Float32 image with selection rings around each bead 
@@ -172,7 +172,7 @@ a tuple of  `(apsf, rois, positions, selected, params, fwd)`
 + `fwd`: the (forward projected) fit results in the selected ROIs 
 
 """
-function distille_PSF(img, σ=1.3; positions=nothing, force_align=false, rel_thresh=0.1, min_dist=nothing, roi_size=(16,16), verbose=true, upper_thresh=nothing, pixelsize=1.0, preferred_z=nothing)
+function distille_PSF(img, σ=1.3; positions=nothing, force_align=false, rel_thresh=0.1, min_dist=nothing, roi_size = Tuple(15 .* ones(Int, ndims(img))), verbose=true, upper_thresh=nothing, pixelsize=1.0, preferred_z=nothing)
     # may also upcast to Float32
     img, bg = remove_background(img,2 .*σ) 
     println("Subtracted a background of $(bg)")
