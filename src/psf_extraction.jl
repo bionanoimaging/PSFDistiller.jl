@@ -44,7 +44,7 @@ end
 
 """
     nn_mutual(points)
-    returns the mutual nearest neighbor distances and the index of the neares neighbor, both in matrix form.
+    returns the mutual nearest neighbor distances and the index of the nearest neighbor, both in matrix form.
 """
 function nn_mutual(points)
     kdtree = KDTree(points)
@@ -58,14 +58,14 @@ end
     select_rois(img::AbstractArray, roi_pos::Vector; valid=nothing, roi_size=Tuple(15 .* ones(Int, ndims(img))))
 
 extracts a series of ROIs based from the array `img` on the positions supplied in `Vector`.
-The latter can be a vector of Integer positions or a vector of `CartesionCoord` as optained by
+The latter can be a vector of Integer positions or a vector of `CartesionCoord` as obtained by
 Image.local.
 
 #arguments
 + `img`: image to extract ROIs from
 + `roi_pos`: a list of ND-indices where to extract. Alternatively also a matrix works, where the columns correspond to the positions.
 + `valid`: if provided a binary vector indicates which of the positions are valid and will be extracted
-+ `roi_size`: the size of the region of interst to extract at each position via `NDTools.select_region()` 
++ `roi_size`: the size of the region of interest to extract at each position via `NDTools.select_region()` 
 
 #returns
 a tuple of a vector of extracted regions of interest and a list of cartesian indices at which they were extracted.
@@ -110,7 +110,7 @@ end
 """
     remove_border(vec::Vector, roi_size)
 
-removes all positions which are too close to the border in a vector of cordinates.
+removes all positions which are too close to the border in a vector of coordinates.
 """
 function remove_border(vec::Vector, sz, roi_size; valid=nothing)
     res = []
@@ -147,8 +147,8 @@ end
 """
     distille_PSF(img, σ=1.3; positions=nothing, force_align=false, rel_thresh=0.1, min_dist=16.0, roi_size = Tuple(15 .* ones(Int, ndims(img))), upper_thresh=nothing, pixelsize=1.0)
 
-automatically extracts multiple PSFs from one dataset, alignes and averages them. The input image `img` should contain a sparse set of PSF measurements
-obtained by imagin beads, QDots or NV centers.
+automatically extracts multiple PSFs from one dataset, aligns and averages them. The input image `img` should contain a sparse set of PSF measurements
+obtained by imaging beads, QDots or NV centers.
 If you want to apply this to multicolor or multimode datasets, run it first on one channel and then again on the other channels using the `positions` argument.
 
 #arguments
