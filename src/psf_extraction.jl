@@ -20,7 +20,7 @@ function align_all(rois; shifts=nothing, positions=nothing, iterations=500, verb
             if isnothing(shifts)
                 to_center = rois[n] # gaussf(rois[n], 1.0)
                 params, _, _ = gauss_fit(to_center, iterations=iterations, verbose=verbose)
-                params[:μ], all(params[:FWHM] .< size(rois[n])) && all(params[:FWHM] .> 0.0)
+                params[:μ], all(params[:FWHMs] .< size(rois[n])) && all(params[:FWHMs] .> 0.0)
             else
                 shifts[n], true
             end
