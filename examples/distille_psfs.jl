@@ -28,10 +28,10 @@ perfect_img = conv_psf(beads, p_conf)
 n_img = poisson(perfect_img)
 
 mypsf, rois, positions, selected, params, fwd = distille_PSF(perfect_img)
-params2, fwd2, allp2 = PSFDistiller.gauss_fit(mypsf)
+params2, fwd2, allp2 = InverseModeling.gauss_fit(mypsf)
 
-@show sampling .* params[:FWHM]
-@show sampling .* params2[:FWHM]
+@show sampling .* params[:FWHMs]
+@show sampling .* params2[:FWHMs]
 @show params2[:R2]
 # @vt fwd2 apsf (fwd2 .- mypsf)
 @show mpsf = sum(mypsf)/prod(size(mypsf))
