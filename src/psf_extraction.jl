@@ -3,9 +3,10 @@ export align_all, distille_PSF, nn_mutual, select_rois, clear_border, border_dis
 """
     align_all(rois; shifts=nothing, optimizer=LBFGS(), iterations=500, verbose=false)
 
-aligns a series of regions of interest `rois` of equal sizes to another. This is achieved by fitting a Gaussian to each of the ROIs and applying a Fourier-based shift
+Align a series of regions of interest `rois` of equal sizes to another. This is achieved by fitting a Gaussian to each of the ROIs and applying a Fourier-based shift
 to align all of them to the center. The aligned raw data is then summed.
-#
+
+# Arguments
 `positions`: If provided, these will be added to the determined shifts for the valid fits.
 """
 function align_all(rois; shifts=nothing, positions=nothing, iterations=500, verbose=false)
@@ -26,7 +27,7 @@ function align_all(rois; shifts=nothing, positions=nothing, iterations=500, verb
             end
         end
         if !valid
-            println("Warning fit failed (sigma .> roi_size). discarding bead $n")
+            @warn "Warning fit failed (sigma .> roi_size). discarding bead $n"
         else
             if isnothing(positions)
                 push!(res_shifts, myshift)
@@ -38,13 +39,14 @@ function align_all(rois; shifts=nothing, positions=nothing, iterations=500, verb
             mysum .+= ashifted
         end
     end
-    println("Averaged $(length(shifted)) beads.")
+    @info "Averaged $(length(shifted)) beads."
     return mysum./length(shifted), shifted, res_shifts
 end
 
 """
     nn_mutual(points)
-    returns the mutual nearest neighbor distances and the index of the nearest neighbor, both in matrix form.
+
+Return the mutual nearest neighbour distances and the index of the nearest neighbour, both in matrix form.
 """
 function nn_mutual(points)
     kdtree = KDTree(points)
@@ -57,17 +59,17 @@ end
 """
     select_rois(img::AbstractArray, roi_pos::Vector; valid=nothing, roi_size=Tuple(15 .* ones(Int, ndims(img))))
 
-extracts a series of ROIs based from the array `img` on the positions supplied in `Vector`.
+Extract a series of ROIs based from the array `img` on the positions supplied in `Vector`.
 The latter can be a vector of Integer positions or a vector of `CartesionCoord` as obtained by
 Image.local.
 
-#arguments
+# Arguments
 + `img`: image to extract ROIs from
 + `roi_pos`: a list of ND-indices where to extract. Alternatively also a matrix works, where the columns correspond to the positions.
 + `valid`: if provided a binary vector indicates which of the positions are valid and will be extracted
 + `roi_size`: the size of the region of interest to extract at each position via `NDTools.select_region()` 
 
-#returns
+# Returns
 a tuple of a vector of extracted regions of interest and a list of cartesian indices at which they were extracted.
 """
 function select_rois(img::AbstractArray, roi_pos::Vector; valid=nothing, roi_size=Tuple(15 .* ones(Int, ndims(img))))
@@ -90,8 +92,7 @@ end
 """
     clear_border(img, roi_size; pad_value=zero(eltype(img)))
 
-inserts `pad_value` into the border region.
-
+Insert `pad_value` into the border region.
 """
 function clear_border(img, roi_size; pad_value=zero(eltype(img)))
     sz = size(img)
@@ -101,7 +102,7 @@ end
 """
     border_dist(vec, sz)
 
-calculates the closest distance to the border along each dimension, given a vector of coordinate vectors. 
+Calculate the closest distance to the border along each dimension, given a vector of coordinate vectors. 
 """
 function border_dist(vec, sz, ndims=length(sz))
     [min.(Tuple(v[1:ndims]).-1, sz[1:ndims].-Tuple(v[1:ndims])) for v in vec]
@@ -110,7 +111,7 @@ end
 """
     remove_border(vec::Vector, roi_size)
 
-removes all positions which are too close to the border in a vector of coordinates.
+Remove all positions which are too close to the border in a vector of coordinates.
 """
 function remove_border(vec::Vector, sz, roi_size; valid=nothing)
     res = []
@@ -130,9 +131,9 @@ end
 """
     precise_extract(img, positions, roi_size)
 
-extracts a region of size `roi_size` from the ND-dataset `img` at each position centering each region precisely at the supixel cooredinates as specified by `positions`.
+Extract a region of size `roi_size` from the ND-dataset `img` at each position centring each region precisely at the sub-pixel coordinates as specified by `positions`.
 
-#returns
+# Returns
 a tuple of `(extracted, cart_ids, mysum)` with `extracted` referring to the extracted and shifted regions and `mymean` being the average of all of these regions.
 `cart_ids` refers to cartesian indices of the nearest pixel positions.
 """
@@ -147,22 +148,22 @@ end
 """
     distille_PSF(img, σ=1.3; positions=nothing, force_align=false, rel_thresh=0.1, min_dist=16.0, roi_size = Tuple(15 .* ones(Int, ndims(img))), upper_thresh=nothing, pixelsize=1.0)
 
-automatically extracts multiple PSFs from one dataset, aligns and averages them. The input image `img` should contain a sparse set of PSF measurements
+Automatically extract multiple PSFs from one dataset, aligns and averages them. The input image `img` should contain a sparse set of PSF measurements
 obtained by imaging beads, QDots or NV centers.
 If you want to apply this to multicolor or multimode datasets, run it first on one channel and then again on the other channels using the `positions` argument.
 
-#arguments
-+ `img`: ND-image to distill the PSF from
-+ `σ`: the size of the filtering kernel usde in the preprocessing step before finding the local maxima. This may be noise-dependent.
+# Arguments
++ `img`: ND-image to distille the PSF from
++ `σ`: the size of the filtering kernel used in the preprocessing step before finding the local maxima. This may be noise-dependent.
 + `positions`: if a list of (sub-pixel precision) positions is provided, these will be used instead of aligning them. 
 + `force_align`: If true, the subpixel-alignment will be done, even though positions are given.
-+ `rel_trhesh`: the threshold specifying which local maxima are valid. This is a relative minimum brightness value compared to the maximum of the Gauss-filtered data.
++ `rel_thresh`: the threshold specifying which local maxima are valid. This is a relative minimum brightness value compared to the maximum of the Gauss-filtered data.
 + `min_dist`: The minimum distance in pixels to the nearest other maximum.
 + `roi_size`: The size of the region of interest to extract. The default is 2D but this should also work for higher dimensions assuming the size of `img` for the other dimensions.
 + `upper_thresh`: if provided, also an upper relative threshold will be applied eliminating the very bright particles. If you have clusters, try `upper_thresh = 0.45`.
 + `pixelsize`: size of a pixel. Scales the FWHMs and σ in the result parameters.
 
-#returns
+# Returns
 a tuple of  `(mypsf, rois, positions, selected, params, fwd)`
 + `mypsf`: the distilled PSF
 + `rois`: the individual aligned beads as a vector of images
@@ -175,7 +176,7 @@ a tuple of  `(mypsf, rois, positions, selected, params, fwd)`
 function distille_PSF(img, σ=1.3; positions=nothing, force_align=false, rel_thresh=0.1, min_dist=nothing, roi_size = Tuple(15 .* ones(Int, ndims(img))), verbose=true, upper_thresh=nothing, pixelsize=1.0, preferred_z=nothing)
     # may also upcast to Float32
     img, bg = remove_background(img,2 .*σ) 
-    println("Subtracted a background of $(bg)")
+    @info "Subtracted a background of" bg
     if isnothing(min_dist)
         min_dist = maximum(roi_size)
     end
@@ -194,19 +195,19 @@ function distille_PSF(img, σ=1.3; positions=nothing, force_align=false, rel_thr
         all_max = findlocalmaxima(gimg)
         all_val = gimg[all_max]
         all_max_vec = cart_to_mat(all_max)
-        println("Found $(length(all_max)) maxima to consider.")
+        @info "Found $(length(all_max)) maxima to consider"
 
         nndist, _ = nn_mutual(all_max_vec)
         valid_nn = nndist .> min_dist
 
-        println("Found $(sum(valid_nn)) beads to consider with sufficient distance min_dist=$(min_dist).")
+        @info "Found $(sum(valid_nn)) beads to consider with sufficient distance $(min_dist)"
         if !isnothing(upper_thresh)
             max_b = maximum(all_val) .* upper_thresh
             valid_nn .*= (all_val .< max_b)
-            println("Found $(sum(valid_nn)) beads to consider with correct brightness $(max_b).")
+            @info "Found $(sum(valid_nn)) beads to consider with correct brightness $(max_b)."
         end
         all_max_vec = remove_border(all_max_vec, size(gimg), roisz./2; valid=valid_nn)
-        println("Removed border. $(length(all_max_vec)) beads remaining.")
+        @info "Removed border. $(length(all_max_vec)) beads remaining."
         if length(all_max_vec) < 1
             error("No beads were found which are valid.")
         end
@@ -226,7 +227,7 @@ function distille_PSF(img, σ=1.3; positions=nothing, force_align=false, rel_thr
         all_max_vec = positions
     end
     if force_align
-        println("Averaging $(length(rois)) regions of interest.")
+        @info "Averaging $(length(rois)) regions of interest."
         psf, rois, positions = align_all(rois, positions=all_max_vec, verbose=verbose);
     end
     selected = make_rings(size(img), cart_ids, expand_size(roi_size,size(img)))
