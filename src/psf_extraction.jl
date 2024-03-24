@@ -162,6 +162,7 @@ If you want to apply this to multicolor or multimode datasets, run it first on o
 + `roi_size`: The size of the region of interest to extract. The default is 2D but this should also work for higher dimensions assuming the size of `img` for the other dimensions.
 + `upper_thresh`: if provided, also an upper relative threshold will be applied eliminating the very bright particles. If you have clusters, try `upper_thresh = 0.45`.
 + `pixelsize`: size of a pixel. Scales the FWHMs and σ in the result parameters.
++ `bg_alg`: Algorithm to use for background removal
 
 # Returns
 a tuple of  `(mypsf, rois, positions, selected, params, fwd)`
@@ -173,9 +174,9 @@ a tuple of  `(mypsf, rois, positions, selected, params, fwd)`
 + `fwd`: the (forward projected) fit results in the selected ROIs 
 
 """
-function distille_PSF(img, σ=1.3; positions=nothing, force_align=false, rel_thresh=0.1, min_dist=nothing, roi_size = Tuple(15 .* ones(Int, ndims(img))), verbose=true, upper_thresh=nothing, pixelsize=1.0, preferred_z=nothing)
+function distille_PSF(img, σ=1.3; positions=nothing, force_align=false, rel_thresh=0.1, min_dist=nothing, roi_size=Tuple(15 .* ones(Int, ndims(img))), verbose=false, upper_thresh=nothing, pixelsize=1.0, preferred_z=nothing, bg_alg=GaussMin(σ))
     # may also upcast to Float32
-    img, bg = remove_background(img,2 .*σ) 
+    img, bg = remove_background(GaussMin(2 .* σ), img)
     @info "Subtracted a background of" bg
     if isnothing(min_dist)
         min_dist = maximum(roi_size)
@@ -232,7 +233,7 @@ function distille_PSF(img, σ=1.3; positions=nothing, force_align=false, rel_thr
     end
     selected = make_rings(size(img), cart_ids, expand_size(roi_size,size(img)))
 
-    psf, _ = remove_background(psf,σ)
+    psf, _ = remove_background(bg_alg, psf)
     if !isempty(psf)
         params, fwd, allp = gauss_fit(psf, verbose=verbose, pixelsize=pixelsize);
 
