@@ -3,8 +3,7 @@ export cart_to_mat, mat_to_vec, remove_background, gaussf
 """
     cart_to_mat(cart)
 
-converts a list of cartesian indices to a matrix with the first dimension corresponding to the dimension direction.
-    
+Convert a list of cartesian indices to a matrix with the first dimension corresponding to the dimension direction.
 """
 function cart_to_mat(cart)
     all_max_vec = zeros(length(cart[1]), length(cart))
@@ -19,8 +18,7 @@ end
 """
     mat_to_vec(mat)
 
-converts a 2D matrix to a vector of vectors, one vector for each column.
-
+Convert a 2D matrix to a vector of vectors, one vector for each column.
 """
 function mat_to_vec(mat)
     [mat[:,n] for n=1:size(mat,2)]
@@ -28,10 +26,11 @@ end
 
 """
     gaussf(img::AbstractArray, sigma=1.0; dtype=Float32)
-performs Gaussian filtering using FFTs. `sigma` denotes the kernel sizes along the various dimensions. 
-#arguments
+
+Perform Gaussian filtering using FFTs. `sigma` denotes the kernel sizes along the various dimensions. 
+
+# Arguments
 + `img`: the image to apply the Gaussian filter to
-+ ``
 """
 function gaussf(img::AbstractArray{T}, sigma=1.0; dtype=Float32) where (T <: Real)
     dims=1:ndims(img)
