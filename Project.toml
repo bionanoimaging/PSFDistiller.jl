@@ -1,16 +1,16 @@
 name = "PSFDistiller"
 uuid = "04565bb4-ab3c-40ee-806f-74a8daaad57b"
 authors = ["RainerHeintzmann <heintzmann@gmail.com>"]
-version = "0.1.0"
+version = "0.1.1"
 
 [compat]
-FFTW = "1.4"
-NDTools = "0.5"
-Images = "0.25" 
+FFTW = "1.4, 1.5, 1.6, 1.7, 1.8"
+NDTools = "0.5, 0.6, 0.7"
+Images = "0.25, 0.26" 
 FourierTools = "0.3, 0.4" 
 IndexFunArrays = "0.2"
 NearestNeighbors = "0.4"
-julia = "1.7, 1.8"
+julia = "1.7, 1.8, 1.9, 1.10"
 
 [extras]
 FourierTools = "b18b359b-aebc-45ac-a139-9c0ccbb2871e"
