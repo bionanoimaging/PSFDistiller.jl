@@ -9,7 +9,7 @@ to align all of them to the center. The aligned raw data is then summed.
 # Arguments
 `positions`: If provided, these will be added to the determined shifts for the valid fits.
 """
-function align_all(rois; shifts=nothing, positions=nothing, iterations=500, verbose=false)
+function align_all(rois; shifts=nothing, positions=nothing, iterations=500, verbose=false, fit_sz=nothing)
     res_shifts = []
     shifted = []
     if length(rois) == 0
@@ -20,8 +20,16 @@ function align_all(rois; shifts=nothing, positions=nothing, iterations=500, verb
         myshift, valid = let 
             if isnothing(shifts)
                 to_center = rois[n] # gaussf(rois[n], 1.0)
+                if !isnothing(fit_sz)
+                    to_center = select_region(to_center, fit_sz)
+                end
                 params, _, _ = gauss_fit(to_center, iterations=iterations, verbose=verbose)
-                params[:μ], all(params[:FWHMs] .< size(rois[n])) && all(params[:FWHMs] .> 0.0)
+                params[:FWHMs] .= abs.(params[:FWHMs])
+                valid = all(params[:FWHMs] .< size(rois[n])) && all(params[:FWHMs] .> 0.0)
+                if (!valid && verbose)
+                    @info "Fit failed for bead $n, FWHMs: $(params[:FWHMs])"
+                end
+                params[:μ], valid
             else
                 shifts[n], true
             end
@@ -160,9 +168,13 @@ If you want to apply this to multicolor or multimode datasets, run it first on o
 + `rel_thresh`: the threshold specifying which local maxima are valid. This is a relative minimum brightness value compared to the maximum of the Gauss-filtered data.
 + `min_dist`: The minimum distance in pixels to the nearest other maximum.
 + `roi_size`: The size of the region of interest to extract. The default is 2D but this should also work for higher dimensions assuming the size of `img` for the other dimensions.
++ `preferred_z`: if provided, only the z-slice `preferred_z` will be used for finding the beads. This is useful if all beads are centered in the same slice. For 3D data, the 3D PSF is still extracted. Default is `nothing`, which finds the centers in the whole dataset.
+                 If the boolean `true` is provided, the preferred slice is automatically determined by the maximum position of the variance of the image.
++ `verbose`: if true, additional information will be printed.
 + `upper_thresh`: if provided, also an upper relative threshold will be applied eliminating the very bright particles. If you have clusters, try `upper_thresh = 0.45`.
 + `pixelsize`: size of a pixel. Scales the FWHMs and σ in the result parameters.
 + `bg_alg`: Algorithm to use for background removal
++ `fit_sz`: Size of the region to fit the Gaussian to during alignment. If nothing, the whole region is used.
 
 # Returns
 a tuple of  `(mypsf, rois, positions, selected, params, fwd)`
@@ -174,7 +186,7 @@ a tuple of  `(mypsf, rois, positions, selected, params, fwd)`
 + `fwd`: the (forward projected) fit results in the selected ROIs 
 
 """
-function distille_PSF(img, σ=1.3; positions=nothing, force_align=false, rel_thresh=0.1, min_dist=nothing, roi_size=Tuple(15 .* ones(Int, ndims(img))), verbose=false, upper_thresh=nothing, pixelsize=1.0, preferred_z=nothing, bg_alg=GaussMin(σ))
+function distille_PSF(img, σ=1.3; positions=nothing, force_align=false, rel_thresh=0.1, min_dist=nothing, roi_size=Tuple(15 .* ones(Int, ndims(img))), verbose=false, upper_thresh=nothing, pixelsize=1.0, preferred_z=nothing, bg_alg=GaussMin(σ), fit_sz=nothing)
     # may also upcast to Float32
     img, bg = remove_background(GaussMin(2 .* σ), img)
     @info "Subtracted a background of" bg
@@ -188,6 +200,10 @@ function distille_PSF(img, σ=1.3; positions=nothing, force_align=false, rel_thr
             if isnothing(preferred_z)
                 gaussf(img, σ), roi_size
             else
+                if preferred_z == true
+                    preferred_z = argmax(var(img, dims=(1,2)))[3]
+                    @info "Automatically determined preferred z-slice: $preferred_z"
+                end
                 gaussf(img[:,:,preferred_z], σ), roi_size[1:2] #slice(img,3,preferred_z)
             end
         end
@@ -229,7 +245,7 @@ function distille_PSF(img, σ=1.3; positions=nothing, force_align=false, rel_thr
     end
     if force_align
         @info "Averaging $(length(rois)) regions of interest."
-        psf, rois, positions = align_all(rois, positions=all_max_vec, verbose=verbose);
+        psf, rois, positions = align_all(rois, positions=all_max_vec, verbose=verbose, fit_sz=fit_sz);
     end
     selected = make_rings(size(img), cart_ids, expand_size(roi_size,size(img)))
 
