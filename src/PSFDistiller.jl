@@ -1,7 +1,7 @@
 module PSFDistiller
 
 using IndexFunArrays
-using Images # find_local_maxima
+using ImageFiltering: findlocalmaxima # lightweight; the Images.jl umbrella is not needed
 using NearestNeighbors # to discard them in PSF extraction
 using InverseModeling # for gauss_fit
 using FourierTools # for shift

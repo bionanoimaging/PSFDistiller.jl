@@ -210,6 +210,10 @@ function distille_PSF(img, σ=1.3; positions=nothing, force_align=false, rel_thr
         gimg .*= (gimg .> maximum(gimg) .* rel_thresh)
         # gimg = clear_border(gimg, roi_size)
         all_max = findlocalmaxima(gimg)
+        if isempty(all_max)
+            @warn "No local maxima above the threshold were found."
+            return ([],[],[],[],[],[])
+        end
         all_val = gimg[all_max]
         all_max_vec = cart_to_mat(all_max)
         @info "Found $(length(all_max)) maxima to consider"
